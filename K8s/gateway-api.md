@@ -1,21 +1,36 @@
+# Gateway API
 
 
-**Gateway API를 “설치”하면, 실제 트래픽을 받기 위해 결국 `Service(type=LoadBalancer)`가 필요.**
-Gateway API는 “라우팅 규칙(표준 리소스)”이고, **외부에서 들어오는 트래픽을 실제로 받아줄 네트워크 엔드포인트**는 보통 Service가 만들어 줍니다.
+**Gateway API는 Kubernetes에서 네트워크 트래픽을 외부로부터 클러스터 내부의 서비스로 안전하고 유연하게 전달하기 위한 새로운 표준 API 리소스 집합**이다.
+전통적으로는 Ingress 리소스를 통해 HTTP/HTTPS 요청을 클러스터 내부 서비스로 라우팅했지만, Ingress는 기능 확장에 한계가 있었고, L4(Transport Layer) 수준의 트래픽이나 멀티 프로토콜, 고급 라우팅 제어를 지원하기 어려웠다.
+이러한 배경에서 등장한 것이 바로 Gateway API 이다.
 
-## API GATWAY   
-- API 게이트웨이 는 외부 클라이언트(모바일 앱, 브라우저 또는 외부 API)와 백엔드 마이크로서비스 또는 API 사이에 위치하는 특정 유형의 애플리케이션 수준 서비스 입니다.
+| 리소스 | 설명 |
+|--------|------|
+| GatewayClass | 인프라 제공자가 정의하는 Gateway 구현 클래스 |
+| Gateway | 실제 L4/L7 트래픽을 수신하는 리소스 |
+| Route (HTTPRoute, TLSRoute, TCPRoute, GRPCRoute) | 서비스로 트래픽을 라우팅하는 규칙 |
+| ReferencePolicy, BackendPolicy | 고급 권한과 정책 제어 리소스 |
 
-- 주요 목적은 모든 클라이언트 요청에 대한 단일 진입점 역할을 하여 API 트래픽을 관리하고 조율하는 것입니다.
+## Gateway 리소스를 어디에 만들어야 할까?
 
-- API 게이트웨이에는 간단한 트래픽 라우팅 외에도 인증 , 속도 제한 , 캐싱 , 부하 분산 , 로깅 , 모니터링 과 같은 추가 기능이 포함됩니다 .
+| 리소스 | 위치 기준 | 설명 |
+|--------|----------|------|
+| GatewayClass | 클러스터 전역 | 어떤 Gateway 컨트롤러를 사용할지 지정 |
+| Gateway | 애플리케이션(Service)이 존재하는 네임스페이스 | 실제로 트래픽을 수신하는 진입점 |
+| Route (HTTPRoute 등) | 애플리케이션 네임스페이슬 | Gateway를 참조하여 라우팅 정의 |
 
-- API 게이트웨이 에 대한 주요 사항 :
+- GatewayClass 는 전역 리소스니까 네임스페이스가 없다 (cluster-scoped)
+- Gateway 는 특정 네임스페이스에 생성되며, 해당 네임스페이스에 존재하는 Route만 기본적으로 받아들인다
+- 물론 allowedRoutes 설정으로 다른 네임스페이스도 허용할 수 있다.
+- Route (HTTPRoute, TLSRoute 등)는 자신의 네임스페이스에서 Gateway를 parentRefs 로 참조한다
+ 
 
-- API에 초점 : 주로 API 호출과 관련된 트래픽을 처리합니다(애플리케이션 계층 - OSI 모델의 7계층).
-- API 요청 관리 : API 소비자를 위한 단일 진입점 역할을 하며 API 경로에 따라 다양한 백엔드 서비스에 요청을 프록시할 수 있습니다.
-- 추가 기능 : API 게이트웨이에는 보안(인증, 권한 부여), 트래픽 관리(속도 제한, 조절), 캐싱 및 모니터링이 포함되는 경우가 많습니다.
-- Kubernetes에 국한되지 않음 : API 게이트웨이는 모든 환경(클라우드, 온프레미스 또는 하이브리드)에서 사용할 수 있으며 Kubernetes 클러스터에 국한되지 않습니다.
+- default 네임스페이스에 있는 애플리케이션을 외부에서 노출하고 싶다면:
+   - Gateway → default 네임스페이스에 생성
+   - HTTPRoute → default 네임스페이스에 생성
+   - Service, Deployment → 역시 default 에 존재
+ 
 
 ## 1) Gateway API는 “규칙/추상화(컨트롤 플레인)”
 
@@ -25,9 +40,8 @@ Gateway API 설치/적용에서 나오는 리소스들:
 * `Gateway` : “리스너(80/443), 주소, TLS 등 게이트웨이 인스턴스” 선언
 * `HTTPRoute` : “Host/Path 라우팅 규칙” 선언d   
 
-이건 **트래픽을 ‘어떻게 보낼지’에 대한 스펙(명세)**이지, 그 자체가 인터넷에서 접속 가능한 IP를 자동으로 만들어주는 건 아닙니다.
-
 ---
+# Envoy
 
 ## 2) 실제 트래픽을 “받는 입구(데이터 플레인)”가 필요함
 
@@ -39,7 +53,6 @@ Envoy Gateway를 설치하면 보통 구성 요소가 생깁니다:
 * 데이터플레인(Envoy Proxy) Deployment/DaemonSet
 * 그리고 **그 Envoy Proxy를 외부에 노출시키는 Service**
 
-여기서 핵심이:
 
 > “외부에서 접속할 IP/엔드포인트”를 만들기 위해
 > **Envoy Proxy 앞에 `Service(type=LoadBalancer)`를 둔다**
@@ -81,3 +94,6 @@ NKS는 `type: LoadBalancer` Service를 만들면 **클라우드 LB를 자동 생
 - 인프라 운영자/Devops 는 GatewayClass,Gateway를 관리 
 - 개발자는 트래픽 라우팅을 관리 (HTTPRoute)- Service
   <img src="../imgs/K8S/role.png" alt="Gateway API Role-Oriented">cd
+
+# Reference
+- [kubernetes gateway api 정리](https://somaz.tistory.com/403)

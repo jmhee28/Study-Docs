@@ -1,4 +1,4 @@
-# k8s 
+# k8s - [공식문서](https://kubernetes.io/docs/concepts/)
 
 ## 쿠버네티스의 등장 배경 및 목적
 
@@ -83,3 +83,4 @@ kubectl describe pod <pod-name>
 ### pod lifecycle
 
 ![Pod Lifecycle](../imgs/K8S/pod-lifecycle.png)
+
