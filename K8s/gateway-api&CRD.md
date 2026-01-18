@@ -1,4 +1,4 @@
-# Gateway API
+# Gateway API / CRD
 
 
 **Gateway API는 Kubernetes에서 네트워크 트래픽을 외부로부터 클러스터 내부의 서비스로 안전하고 유연하게 전달하기 위한 새로운 표준 API 리소스 집합**이다.
@@ -41,7 +41,79 @@ Gateway API 설치/적용에서 나오는 리소스들:
 * `HTTPRoute` : “Host/Path 라우팅 규칙” 선언d   
 
 ---
-# Envoy
+# CRD
+CRD(CustomResourceDefinition)는 **쿠버네티스에 “새로운 리소스 종류(kind)”를 추가하는 확장 메커니즘**
+-  기본 리소스(Pod/Service/Deployment)처럼, 너만의 리소스를 쿠버네티스 API로 다루게 해준다.
+
+---
+
+## 1) CRD가 정확히 뭐냐
+
+* 쿠버네티스는 원래 `Pod`, `Service` 같은 **정해진 kind**만 알아듣는다.
+* CRD를 설치하면 API Server가
+
+  * “이제부터 `Gateway`, `HTTPRoute` 같은 kind도 받아줄게”라고 **새 타입을 등록**한다.
+
+즉, CRD는 **새 리소스 타입의 “정의서(스키마 등록)”**다.
+
+---
+
+## 2) CRD vs CR 
+
+* **CRD**: “타입 정의”
+
+  * 예: `kind: CustomResourceDefinition`
+  * 어떤 필드가 있는지, 어떤 버전(v1beta1/v1), 어떤 그룹(gateway.networking.k8s.io)인지 등
+* **CR(Custom Resource)**: 그 타입으로 만든 “실제 객체”
+
+  * 예: `kind: Gateway`, `kind: HTTPRoute`
+  * 네가 `kubectl apply -f gateway.yaml`로 만드는 것
+
+비유:
+
+* CRD = 테이블 스키마
+* CR = 그 테이블의 실제 row
+
+---
+
+## 3) CRD만 있으면 동작하나?
+
+대부분 **아니**. CRD는 “API에 등록”만 해줄 뿐이고,
+**동작을 만드는 건 Controller(Operator)** 야.
+
+흐름:
+
+1. CRD 설치 → API Server가 새 kind를 저장/조회 가능
+2. 너가 CR 생성(예: Gateway 생성)
+3. Controller가 watch(감시)하다가
+4. 실제 리소스(Deployment/Service/Config 등)를 만들거나 설정을 바꿔서 “현실화”
+
+그래서 Gateway API도:
+
+* CRD(리소스 타입들) + Controller(Envoy Gateway 같은 구현체)
+  둘 다 있어야 라우팅이 실제로 됨.
+
+---
+
+## 4) 어디서 보나/확인하나
+
+```bash
+kubectl get crd
+kubectl get crd | grep gateway
+kubectl explain gateway --api-version=gateway.networking.k8s.io/v1
+```
+
+---
+
+## 5) 예시로 감 잡기 (Gateway API)
+
+* CRD가 등록해주는 kind들: `GatewayClass`, `Gateway`, `HTTPRoute` …
+* 너는 `Gateway`, `HTTPRoute` 같은 CR을 만든다
+* Envoy Gateway 같은 컨트롤러가 그걸 읽고 실제 트래픽 처리를 구성한다
+
+---
+    
+# Envoy Gateway
 
 ## 2) 실제 트래픽을 “받는 입구(데이터 플레인)”가 필요함
 
@@ -89,11 +161,6 @@ NKS는 `type: LoadBalancer` Service를 만들면 **클라우드 LB를 자동 생
    → 누군가(또는 Helm chart)가 “게이트웨이 프록시 노출”을 위해 Service를 만든 것
 
 ---
-
-## 역할의 분리 (role-oriented)
-- 인프라 운영자/Devops 는 GatewayClass,Gateway를 관리 
-- 개발자는 트래픽 라우팅을 관리 (HTTPRoute)- Service
-  <img src="../imgs/K8S/role.png" alt="Gateway API Role-Oriented">cd
 
 # Reference
 - [kubernetes gateway api 정리](https://somaz.tistory.com/403)
