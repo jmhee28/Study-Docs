@@ -1,4 +1,3 @@
-
 ## kubectl 명령어 정리
 
 ### 기본 조회
@@ -55,11 +54,10 @@
 - 출력 형식: `-o wide|yaml|json`
 - 라벨로 필터링: `-l key=value`
 
-
-
-- kubectl get gateway -n mhee: gateway 목록 조회
-- kubectl apply -f gateway.yaml # gateway 생성
-- kubectl apply -f : -f는 파일을 적용하는 명령어
-- kubectl get gateway -n mhee: gateway 목록 조회
-<img src="../imgs/K8S/cmd1.png" alt="Gateway">
+### 서비스 잠깐 먼추기
+백엔드 서비스 “잠깐 멈추기
+`kubectl -n mhee scale deploy/mhee-tasknote-backend --replicas=0`
+다시 켜기
+`kubectl -n mhee scale deploy/mhee-tasknote-backend --replicas=1`
+`kubectl -n mhee rollout status deploy/mhee-tasknote-backend`
 
