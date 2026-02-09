@@ -1,0 +1,22 @@
+# MySQL 초기 설정
+
+## 1) root 비밀번호 재설정 (비번 없이 접속 가능한 상태에서)
+
+터미널:
+
+```bash
+mysql -u root
+```
+
+MySQL 프롬프트에서(비번 직접 설정):
+
+```sql
+ALTER USER 'root'@'localhost' IDENTIFIED BY '새비밀번호';
+FLUSH PRIVILEGES;
+```
+
+## 2) 데이터베이스 생성
+mysql -u root -p
+
+CREATE DATABASE IF NOT EXISTS svcm;
+
