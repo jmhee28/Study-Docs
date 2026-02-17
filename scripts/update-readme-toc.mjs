@@ -215,12 +215,73 @@ function buildSummaryLines(sections) {
   return summaryLines.join("\n").concat("\n");
 }
 
-function updateToc(readme, sections) {
+function createEmptyTocBlock() {
+  return [START_MARKER, "", END_MARKER].join("\n");
+}
+
+function ensureTocBlock(readme) {
   const blockPattern = new RegExp(
     `${escapeRegExp(START_MARKER)}[\\s\\S]*?${escapeRegExp(END_MARKER)}`,
     "m"
   );
-  if (!blockPattern.test(readme)) {
+  if (blockPattern.test(readme)) {
+    return readme;
+  }
+
+  const tocHeadingPattern = /^##\s+(목차|Table of Contents)\s*$/m;
+  const headingMatch = readme.match(tocHeadingPattern);
+
+  if (!headingMatch || headingMatch.index === undefined) {
+    const normalized = readme.trimEnd();
+    return `${normalized}\n\n## 목차\n\n${createEmptyTocBlock()}\n`;
+  }
+
+  const headingStart = headingMatch.index;
+  const headingText = headingMatch[0];
+  const headingEnd = headingStart + headingText.length;
+
+  let contentStart = headingEnd;
+  if (readme.startsWith("\r\n", contentStart)) {
+    contentStart += 2;
+  } else if (readme.startsWith("\n", contentStart)) {
+    contentStart += 1;
+  }
+
+  const rest = readme.slice(contentStart);
+  const nextHeadingRegex = /^##\s+/m;
+  const nextHeadingMatch = rest.match(nextHeadingRegex);
+  const contentEnd =
+    nextHeadingMatch && nextHeadingMatch.index !== undefined
+      ? contentStart + nextHeadingMatch.index
+      : readme.length;
+
+  const beforeHeading = readme.slice(0, headingStart).trimEnd();
+  const headingLine = readme.slice(headingStart, headingEnd).trimEnd();
+  const afterToc = readme.slice(contentEnd).trimStart();
+
+  const rebuilt = [
+    beforeHeading,
+    "",
+    headingLine,
+    "",
+    createEmptyTocBlock(),
+    afterToc ? "" : null,
+    afterToc || null,
+  ]
+    .filter((part) => part !== null)
+    .join("\n")
+    .trimEnd();
+
+  return `${rebuilt}\n`;
+}
+
+function updateToc(readme, sections) {
+  const ensuredReadme = ensureTocBlock(readme);
+  const blockPattern = new RegExp(
+    `${escapeRegExp(START_MARKER)}[\\s\\S]*?${escapeRegExp(END_MARKER)}`,
+    "m"
+  );
+  if (!blockPattern.test(ensuredReadme)) {
     throw new Error(`Could not find ${START_MARKER} ... ${END_MARKER} block.`);
   }
 
@@ -233,7 +294,7 @@ function updateToc(readme, sections) {
     END_MARKER,
   ].join("\n");
 
-  return readme.replace(blockPattern, replacement);
+  return ensuredReadme.replace(blockPattern, replacement);
 }
 
 function writeIfChanged(filePath, nextContent) {
