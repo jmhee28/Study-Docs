@@ -47,14 +47,23 @@ function parseSections(lines) {
 }
 
 function buildTocLines(sections) {
-  const tocLines = [];
+  const tocLines = [
+    "| 분류 | 파일 | 내용 요약 |",
+    "|:---|:---|:---|",
+  ];
+
+  const escapeTableText = (text) => text.replace(/\|/g, "\\|").trim();
 
   for (const section of sections) {
-    tocLines.push(`- [${section.title}](#${slugifyHeading(section.title)})`);
+    if (section.files.length === 0) {
+      tocLines.push(`| [${section.title}](#${slugifyHeading(section.title)}) | - | - |`);
+      continue;
+    }
 
     for (const file of section.files) {
-      const summarySuffix = file.summary ? ` - ${file.summary}` : "";
-      tocLines.push(`  - [${file.name}](${file.path})${summarySuffix}`);
+      tocLines.push(
+        `| [${section.title}](#${slugifyHeading(section.title)}) | [${file.name}](${file.path}) | ${escapeTableText(file.summary || "-")} |`
+      );
     }
   }
 
