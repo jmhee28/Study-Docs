@@ -1,0 +1,39 @@
+name: Update README TOC
+
+on:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: write
+
+jobs:
+  update-toc:
+    if: startsWith(github.ref, 'refs/heads/') && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Update README TOC
+        run: node scripts/update-readme-toc.mjs
+
+      - name: Commit and push changes
+        run: |
+          if git diff --quiet -- README.md; then
+            echo "No README TOC changes."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore: auto-update README TOC [skip ci]"
+          git push origin HEAD:${GITHUB_REF_NAME}
